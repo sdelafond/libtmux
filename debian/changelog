@@ -1,0 +1,12 @@
+libtmux (0.6.1-1ubuntu1~ubuntu17.04.1~ppa1) zesty; urgency=medium
+
+  * bump version
+  * No-change backport to zesty
+
+ -- Ivan Borzenkov <ivan1986@list.ru>  Sun, 01 Jan 2017 17:12:14 +0300
+
+libtmux (0.6.1-1) unstable; urgency=low
+
+  * source package automatically created by stdeb 0.8.5
+
+ -- Ivan Borzenkov <ivan1986@list.ru>  Sun, 01 Jan 2017 16:08:32 +0300

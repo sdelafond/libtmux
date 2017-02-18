@@ -1,6 +1,6 @@
 Metadata-Version: 1.1
 Name: libtmux
-Version: 0.6.1
+Version: 0.6.3
 Summary: scripting library / orm for tmux
 Home-page: http://github.com/tony/libtmux/
 Author: Tony Narlock
@@ -107,7 +107,7 @@ Description: libtmux - scripting library for tmux
         
         .. code-block:: python
         
-            >>> window = session.attached_window()
+            >>> window = session.attached_window
             >>> window.split_window(attach=False)
             Pane(%23 Window(@10 1:bar, Session($3 foo)))
         

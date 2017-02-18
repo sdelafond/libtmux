@@ -1,19 +1,21 @@
 Source: libtmux
-Maintainer: Ivan Borzenkov <ivan1986@list.ru>
+Maintainer: Sébastien Delafond <seb@debian.org>
 Section: python
 Priority: optional
-Build-Depends: dh-python, python-setuptools (>= 0.6b3), python3-setuptools, python-all (>= 2.6.6-3), python3-all, debhelper (>= 9)
+Build-Depends: dh-python, python-setuptools, python3-setuptools, python-all, python3-all, debhelper (>= 9)
 Standards-Version: 3.9.6
 Homepage: http://github.com/tony/libtmux/
 
 Package: python-libtmux
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
-Description: scripting library / orm for tmux
+Description: scripting library / ORM for tmux
  libtmux - scripting library for tmux
 
 Package: python3-libtmux
 Architecture: all
 Depends: ${misc:Depends}, ${python3:Depends}
-Description: scripting library / orm for tmux
+Description: scripting library / ORM for tmux
  libtmux - scripting library for tmux
+ .
+ This is the python3 package

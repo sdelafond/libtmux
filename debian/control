@@ -1,4 +1,4 @@
-Source: libtmux
+Source: python-libtmux
 Maintainer: Sebastien Delafond <seb@debian.org>
 Section: python
 Priority: optional

@@ -1,3 +1,13 @@
+python-libtmux (0.6.3-2) experimental; urgency=medium
+
+  * NEW package (required dependency for tmuxp, RFP #774055)
+  * Imported Upstream version 0.6.3
+  * Fix descriptions
+  * Bump-up Standards-Version
+  * Change source package name to python-tmux
+
+ -- Sebastien Delafond <seb@debian.org>  Sat, 18 Feb 2017 11:19:12 +0100    
+
 libtmux (0.6.1-1ubuntu1~ubuntu17.04.1~ppa1) zesty; urgency=medium
 
   * bump version

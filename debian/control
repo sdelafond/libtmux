@@ -3,7 +3,7 @@ Maintainer: Sebastien Delafond <seb@debian.org>
 Section: python
 Priority: optional
 Build-Depends: dh-python, python-setuptools, python3-setuptools, python-all, python3-all, debhelper (>= 9)
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 Homepage: http://github.com/tony/libtmux/
 
 Package: python-libtmux

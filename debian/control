@@ -1,5 +1,5 @@
 Source: libtmux
-Maintainer: Sébastien Delafond <seb@debian.org>
+Maintainer: Sebastien Delafond <seb@debian.org>
 Section: python
 Priority: optional
 Build-Depends: dh-python, python-setuptools, python3-setuptools, python-all, python3-all, debhelper (>= 9)

@@ -9,13 +9,15 @@ Homepage: http://github.com/tony/libtmux/
 Package: python-libtmux
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
-Description: scripting library / ORM for tmux
- libtmux - scripting library for tmux
+Description: Python scripting library and ORM for tmux
+ Builds upon tmux's target and formats to create an object mapping to
+ traverse, inspect and interact with live tmux sessions.
 
 Package: python3-libtmux
 Architecture: all
 Depends: ${misc:Depends}, ${python3:Depends}
-Description: scripting library / ORM for tmux
- libtmux - scripting library for tmux
+Description: Python scripting library and ORM for tmux (python3)
+ Builds upon tmux's target and formats to create an object mapping to
+ traverse, inspect and interact with live tmux sessions.
  .
- This is the python3 package
+ This is the Python 3 package

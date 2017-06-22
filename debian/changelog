@@ -1,3 +1,9 @@
+python-libtmux (0.6.3-4) unstable; urgency=medium
+
+  * Target unstable
+
+ -- Sebastien Delafond <seb@debian.org>  Thu, 22 Jun 2017 10:09:49 +0200
+
 python-libtmux (0.6.3-3) experimental; urgency=medium
 
   * Add Vcs-* fields

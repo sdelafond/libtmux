@@ -4,8 +4,8 @@ libtmux - scripting library for tmux
 
 libtmux is the tool behind `tmuxp`_, a tmux workspace manager in python.
 
-it builds upon tmux' `target`_ and `formats`_ to create an object
-mappings to traverse, inspect and interact with live tmux sesssions.
+it builds upon tmux's `target`_ and `formats`_ to create an object
+mapping to traverse, inspect and interact with live tmux sessions.
 
 view the `documentation`_ homepage,  `API`_ information and `architectural
 details`_.
@@ -156,11 +156,11 @@ powerful traversal features::
     Session($3 foo)
 
 .. _BSD: http://opensource.org/licenses/BSD-3-Clause
-.. _developing and testing: http://libtmux.git-pull.com/developing.html
-.. _tmuxp: https://github.com/tony/tmuxp
+.. _developing and testing: http://libtmux.git-pull.com/en/latest/developing.html
+.. _tmuxp: https://tmuxp.git-pull.com/
 .. _documentation: https://libtmux.git-pull.com/
-.. _API: https://libtmux.git-pull.com/api.html
-.. _architectural details: https://libtmux.git-pull.com/about.html
+.. _API: https://libtmux.git-pull.com/en/latest/api.html
+.. _architectural details: https://libtmux.git-pull.com/en/latest/about.html
 .. _formats: http://man.openbsd.org/OpenBSD-5.9/man1/tmux.1#FORMATS
 .. _target: http://man.openbsd.org/OpenBSD-5.9/man1/tmux.1#COMMANDS
 
@@ -178,15 +178,15 @@ Project details
 ---------------
 
 ==============  ==========================================================
-tmux support    1.8, 1.9a, 2.0, 2.1, 2.2, 2.3
-python support  2.6, 2.7, >= 3.3
+tmux support    1.8, 1.9a, 2.0, 2.1, 2.2, 2.3, 2.4
+python support  2.7, >= 3.3, pypy, pypy3
 Source          https://github.com/tony/libtmux
-Docs            http://libtmux.git-pull.com
-API             http://libtmux.git-pull.com/api.html
-Changelog       http://libtmux.git-pull.com/history.html
+Docs            https://libtmux.git-pull.com
+API             https://libtmux.git-pull.com/en/latest/api.html
+Changelog       https://libtmux.git-pull.com/en/latest/history.html
 Issues          https://github.com/tony/libtmux/issues
 Travis          http://travis-ci.org/tony/libtmux
-Test Coverage   https://coveralls.io/r/tony/libtmux
+Test Coverage   https://codecov.io/gh/tony/libtmux
 pypi            https://pypi.python.org/pypi/libtmux
 Open Hub        https://www.openhub.net/p/libtmux-python
 License         `BSD`_.
@@ -195,7 +195,7 @@ git repo        .. code-block:: bash
                     $ git clone https://github.com/tony/libtmux.git
 install stable  .. code-block:: bash
 
-                    $ sudo pip install libtmux
+                    $ pip install libtmux
 install dev     .. code-block:: bash
 
                     $ git clone https://github.com/tony/libtmux.git libtmux

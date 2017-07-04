@@ -16,7 +16,7 @@ doc/properties.rst
 doc/quickstart.rst
 doc/servers.rst
 doc/sessions.rst
-doc/traversing.rst
+doc/traversal.rst
 doc/windows.rst
 libtmux/__about__.py
 libtmux/__init__.py

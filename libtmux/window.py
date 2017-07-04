@@ -9,9 +9,12 @@ from __future__ import absolute_import, unicode_literals, with_statement
 
 import logging
 import os
+import shlex
 
 from . import exc, formats
-from .common import TmuxMappingObject, TmuxRelationalObject
+from .common import (
+    TmuxMappingObject, TmuxRelationalObject, handle_option_error
+)
 from .pane import Pane
 
 logger = logging.getLogger(__name__)
@@ -112,7 +115,7 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
         custom: custom dimensions (see :term:`tmux(1)` manpages).
 
         :param layout: string of the layout, 'even-horizontal', 'tiled', etc.
-        :type layout: string
+        :type layout: str
 
         """
 
@@ -128,10 +131,13 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
     def set_window_option(self, option, value):
         """Wrapper for ``$ tmux set-window-option <option> <value>``.
 
+        :param option: option to set, e.g. 'aggressive-resize'
+        :type option: str
         :param value: window value. True/False will turn in 'on' and 'off',
             also accepts string of 'on' or 'off' directly.
         :type value: bool
-
+        :raises: :exc:`exc.OptionError`, :exc:`exc.UnknownOption`,
+            :exc:`exc.InvalidOption`, :exc:`exc.AmbiguousOption`
         """
 
         self.server._update_windows()
@@ -149,19 +155,7 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
         )
 
         if isinstance(cmd.stderr, list) and len(cmd.stderr):
-            error = cmd.stderr[0]
-            if 'unknown option' in error:
-                raise exc.UnknownOption(error)
-
-            raise ValueError(
-                'tmux set-window-option -t%s:%s %s %s\n' % (
-                    self.get('session_id'),
-                    self.index,
-                    option,
-                    value
-                ) +
-                cmd.stderr
-            )
+            handle_option_error(cmd.stderr[0])
 
     def show_window_options(self, option=None, g=False):
         """Return a dict of options for the window.
@@ -170,7 +164,7 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
         a single option, forwarding to :meth:`Window.show_window_option`.
 
         :param option: optional. show a single option.
-        :type option: string
+        :type option: str
         :param g: Pass ``-g`` flag for global variable
         :type g: bool
         :rtype: :py:obj:`dict`
@@ -190,7 +184,10 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
                 *tmux_args
             ).stdout
 
-        cmd = [tuple(item.split(' ')) for item in cmd]
+        # The shlex.split function splits the args at spaces, while also
+        # retaining quoted sub-strings.
+        #   shlex.split('this is "a test"') => ['this', 'is', 'a test']
+        cmd = [tuple(shlex.split(item)) for item in cmd]
 
         window_options = dict(cmd)
 
@@ -206,10 +203,12 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
         todo: test and return True/False for on/off string
 
         :param option: option to return.
-        :type option: string
+        :type option: str
         :param g: Pass ``-g`` flag, global.
         :type g: bool
-        :rtype: string, int
+        :rtype: str, int
+        :raises: :exc:`exc.OptionError`, :exc:`exc.UnknownOption`,
+            :exc:`exc.InvalidOption`, :exc:`exc.AmbiguousOption`
 
         """
 
@@ -224,13 +223,13 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
             'show-window-options', *tmux_args
         )
 
-        if len(cmd.stderr) and 'unknown option' in cmd.stderr[0]:
-            raise exc.UnknownOption(cmd.stderr[0])
+        if len(cmd.stderr):
+            handle_option_error(cmd.stderr[0])
 
         if not len(cmd.stdout):
             return None
 
-        option = [item.split(' ') for item in cmd.stdout][0]
+        option = [shlex.split(item) for item in cmd.stdout][0]
 
         if option[1].isdigit():
             option = (option[0], int(option[1]))
@@ -241,7 +240,7 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
         """Return :class:`Window` object ``$ tmux rename-window <new_name>``.
 
         :param new_name: name of the window
-        :type new_name: string
+        :type new_name: str
 
         """
 
@@ -282,10 +281,10 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
 
         :param destination: the ``target window`` or index to move the window
             to, default: empty string
-        :type destination: string
+        :type destination: str
         :param session: the ``target session`` or index to move the
             window to, default: current session.
-        :type session: string
+        :type session: str
 
         """
         session = session or self.get('session_id')
@@ -318,7 +317,7 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
 
         :param target_pane: ``target_pane``, or ``-U``,``-D``, ``-L``, ``-R``
             or ``-l``.
-        :type target_pane: string
+        :type target_pane: str
         :rtype: :class:`Pane`
 
         """
@@ -342,11 +341,11 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
         return self.select_pane('-l')
 
     def split_window(
-            self,
-            target=None,
-            start_directory=None,
-            attach=True,
-            vertical=True
+        self,
+        target=None,
+        start_directory=None,
+        attach=True,
+        vertical=True
     ):
         """Split window and return the created :class:`Pane`.
 
@@ -369,7 +368,7 @@ class Window(TmuxMappingObject, TmuxRelationalObject):
         :type attach: bool
         :param start_directory: specifies the working directory in which the
             new window is created.
-        :type start_directory: string
+        :type start_directory: str
         :param target: ``target_pane`` to split.
         :type target: bool
         :param vertical: split vertically

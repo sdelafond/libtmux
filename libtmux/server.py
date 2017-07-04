@@ -12,7 +12,7 @@ import os
 
 from . import exc, formats
 from .common import EnvironmentMixin, TmuxRelationalObject, tmux_cmd, \
-    session_check_name
+    session_check_name, has_gte_version
 from .session import Session
 
 logger = logging.getLogger(__name__)
@@ -314,16 +314,23 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
             Session(server=self, **s) for s in attached_sessions
         ] or None
 
-    def has_session(self, target_session):
+    def has_session(self, target_session, exact=True):
         """Return True if session exists. ``$ tmux has-session``.
 
-        :param: target_session: str of session name.
+        :param target_session: session name
+        :type target_session: str
+        :param exact: match the session name exactly.
+            tmux uses fnmatch by default. Internally prepends ``=`` to the
+            session in ``$ tmux has-session``. tmux 2.1 and up only.
+        :type exact: bool
         :raises: :exc:`exc.BadSessionName`
         :rtype: bool
 
         """
-
         session_check_name(target_session)
+
+        if exact and has_gte_version('2.1'):
+            target_session = '={}'.format(target_session)
 
         proc = self.cmd('has-session', '-t%s' % target_session)
 
@@ -417,7 +424,7 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
 
             $ tmux new-session -s <session_name>
 
-        :type session_name: string
+        :type session_name: str
 
         :param attach: create session in the foreground. ``attach=False`` is
             equivalent to::
@@ -432,7 +439,7 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
 
         :param start_directory: specifies the working directory in which the
             new session is created.
-        :type start_directory: string
+        :type start_directory: str
 
         :raises: :exc:`exc.BadSessionName`
         :rtype: :class:`Session`

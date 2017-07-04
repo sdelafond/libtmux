@@ -10,12 +10,20 @@ import logging
 import os
 import re
 import subprocess
-from distutils.version import StrictVersion, LooseVersion
+import sys
+from distutils.version import LooseVersion
 
 from . import exc
 from ._compat import console_to_str
 
 logger = logging.getLogger(__name__)
+
+
+#: Minimum version of tmux required to run libtmux
+TMUX_MIN_VERSION = '1.8'
+
+#: Most recent version of tmux supported
+TMUX_MAX_VERSION = '2.4'
 
 
 class EnvironmentMixin(object):
@@ -34,10 +42,9 @@ class EnvironmentMixin(object):
         """Set environment ``$ tmux set-environment <name> <value>``.
 
         :param name: the environment variable name. such as 'PATH'.
-        :type option: string
+        :type option: str
         :param value: environment value.
-        :type value: string
-
+        :type value: str
         """
 
         args = ['set-environment']
@@ -57,7 +64,7 @@ class EnvironmentMixin(object):
         """Unset environment variable ``$ tmux set-environment -u <name>``.
 
         :param name: the environment variable name. such as 'PATH'.
-        :type option: string
+        :type option: str
         """
 
         args = ['set-environment']
@@ -76,7 +83,7 @@ class EnvironmentMixin(object):
         """Remove environment variable ``$ tmux set-environment -r <name>``.
 
         :param name: the environment variable name. such as 'PATH'.
-        :type option: string
+        :type option: str
         """
 
         args = ['set-environment']
@@ -98,7 +105,7 @@ class EnvironmentMixin(object):
         specific variable if the name is specified.
 
         :param name: the environment variable name. such as 'PATH'.
-        :type option: string
+        :type option: str
         """
         tmux_args = ['show-environment']
         if self._add_option:
@@ -126,6 +133,12 @@ class tmux_cmd(object):
 
     """:term:`tmux(1)` command via :py:mod:`subprocess`.
 
+    :param tmux_search_paths: Default PATHs to search tmux for, defaults to
+        ``default_paths`` used in :func:`which`.
+    :type tmux_search_paths: list
+    :param append_env_path: Append environment PATHs to tmux search paths.
+    :type append_env_path: bool
+
     Usage::
 
         proc = tmux_cmd('new-session', '-s%' % 'my session')
@@ -149,7 +162,17 @@ class tmux_cmd(object):
     """
 
     def __init__(self, *args, **kwargs):
-        cmd = [which('tmux')]
+        tmux_bin = which(
+            'tmux',
+            default_paths=kwargs.get('tmux_search_paths', [
+                '/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'
+            ]),
+            append_env_path=kwargs.get('append_env_path', True)
+        )
+        if not tmux_bin:
+            raise(exc.TmuxCommandNotFound)
+
+        cmd = [tmux_bin]
         cmd += args  # add the command arguments to cmd
         cmd = [str(c) for c in cmd]
 
@@ -186,8 +209,10 @@ class tmux_cmd(object):
             if not self.stdout:
                 self.stdout = self.stderr[0]
 
-        logger.debug('self.stdout for %s: \n%s' %
-                      (' '.join(cmd), self.stdout))
+        logger.debug(
+            'self.stdout for %s: \n%s' %
+            (' '.join(cmd), self.stdout)
+        )
 
 
 class TmuxMappingObject(collections.MutableMapping):
@@ -255,8 +280,8 @@ class TmuxRelationalObject(object):
     Object           .children                 method
     ================ ========================= =================================
     :class:`Server`  :attr:`Server._sessions`  :meth:`Server.list_sessions`
-    :class:`Session` :attr:`Sessions._windows` :meth:`Session.list_windows`
-    :class:`Window`  :attr:`Windows._panes`    :meth:`Window.list_panes`
+    :class:`Session` :attr:`Session._windows`  :meth:`Session.list_windows`
+    :class:`Window`  :attr:`Window._panes`     :meth:`Window.list_panes`
     :class:`Pane`    n/a                       n/a
     ================ ========================= =================================
 
@@ -315,7 +340,7 @@ class TmuxRelationalObject(object):
         .. _.get(): http://backbonejs.org/#Collection-get
 
         :param id:
-        :type id: string
+        :type id: str
         :rtype: object
 
         """
@@ -328,19 +353,20 @@ class TmuxRelationalObject(object):
         return None
 
 
-def which(exe=None,
-          default_paths=[
-              '/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin']
-          ):
+def which(exe=None, default_paths=[
+            '/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'
+        ], append_env_path=True):
     """Return path of bin. Python clone of /usr/bin/which.
 
     from salt.util - https://www.github.com/saltstack/salt - license apache
 
     :param exe: Application to search PATHs for.
-    :type exe: string
+    :type exe: str
     :param default_path: Application to search PATHs for.
     :type default_path: list
-    :rtype: string
+    :param append_env_path: Append PATHs in environmental variables.
+    :type append_env_path: bool
+    :rtype: str
 
     """
     def _is_executable_file_or_link(exe):
@@ -355,12 +381,15 @@ def which(exe=None,
     # Enhance POSIX path for the reliability at some environments, when
     # $PATH is changing. This also keeps order, where 'first came, first
     # win' for cases to find optional alternatives
-    search_path = os.environ.get('PATH') and \
-        os.environ['PATH'].split(os.pathsep) or list()
+    if append_env_path:
+        search_path = os.environ.get('PATH') and \
+            os.environ['PATH'].split(os.pathsep) or list()
+    else:
+        search_path = []
+
     for default_path in default_paths:
         if default_path not in search_path:
             search_path.append(default_path)
-    os.environ['PATH'] = os.pathsep.join(search_path)
     for path in search_path:
         full_path = os.path.join(path, exe)
         if _is_executable_file_or_link(full_path):
@@ -372,27 +401,105 @@ def which(exe=None,
     return None
 
 
-def is_version(version):
+def get_version():
+    """Return tmux version.
+
+    If tmux is built from git master, the version returned will be the latest
+    version appended with -master, e.g. ``2.4-master``.
+
+    If using OpenBSD's base system tmux, the version will have ``-openbsd``
+    appended to the latest version, e.g. ``2.4-openbsd``.
+
+    :returns: tmux version
+    :rtype: :class:`distutils.version.LooseVersion`
+    """
+    proc = tmux_cmd('-V')
+    if proc.stderr:
+        if proc.stderr[0] == 'tmux: unknown option -- V':
+            if sys.platform.startswith("openbsd"):  # openbsd has no tmux -V
+                return LooseVersion('%s-openbsd' % TMUX_MAX_VERSION)
+            raise exc.LibTmuxException(
+                'libtmux supports tmux %s and greater. This system'
+                ' is running tmux 1.3 or earlier.' % TMUX_MIN_VERSION
+            )
+        raise exc.VersionTooLow(proc.stderr)
+
+    version = proc.stdout[0].split('tmux ')[1]
+
+    # Allow latest tmux HEAD
+    if version == 'master':
+        return LooseVersion('%s-master' % TMUX_MAX_VERSION)
+
+    version = re.sub(r'[a-z]', '', version)
+
+    return LooseVersion(version)
+
+
+def has_version(version):
     """Return True if tmux version installed.
 
     :param version: version, '1.8'
-    :param type: string
+    :type version: str
+    :returns: True if version matches
     :rtype: bool
-
     """
-    proc = tmux_cmd('-V')
-
-    if proc.stderr:
-        raise exc.LibTmuxException(proc.stderr)
-
-    installed_version = proc.stdout[0].split('tmux ')[1]
-
-    return LooseVersion(installed_version) == LooseVersion(version)
+    return get_version() == LooseVersion(version)
 
 
-def has_required_tmux_version(version=None):
+def has_gt_version(min_version):
+    """Return True if tmux version greater than minimum.
+
+    :param min_version: version, e.g. '1.8'
+    :type min_version: str
+    :returns: True if version above min_version
+    :rtype: bool
+    """
+    return get_version() > LooseVersion(min_version)
+
+
+def has_gte_version(min_version):
+    """Return True if tmux version greater or equal to minimum.
+
+    :param min_version: version, e.g. '1.8'
+    :type min_version: str
+    :returns: True if version above or equal to min_version
+    :rtype: bool
+    """
+    return get_version() >= LooseVersion(min_version)
+
+
+def has_lte_version(max_version):
+    """Return True if tmux version less or equal to minimum.
+
+    :param max_version: version, e.g. '1.8'
+    :type max_version: str
+    :returns: True if version below or equal to max_version
+    :rtype: bool
+    """
+    return get_version() <= LooseVersion(max_version)
+
+
+def has_lt_version(max_version):
+    """Return True if tmux version less than minimum.
+
+    :param max_version: version, e.g. '1.8'
+    :type max_version: str
+    :returns: True if version below max_version
+    :rtype: bool
+    """
+    return get_version() < LooseVersion(max_version)
+
+
+def has_minimum_version(raises=True):
     """Return if tmux meets version requirement. Version >1.8 or above.
 
+    :param raises: Will raise exception if version too low, default ``True``
+    :type raises: bool
+    :returns: True if tmux meets minimum required version
+    :rtype: bool
+
+    :versionchanged: 0.7.0
+        No longer returns version, returns True or False
     :versionchanged: 0.1.7
         Versions will now remove trailing letters per `Issue 55`_.
 
@@ -400,30 +507,16 @@ def has_required_tmux_version(version=None):
 
     """
 
-    if not version:
-        proc = tmux_cmd('-V')
-
-        if proc.stderr:
-            if proc.stderr[0] == 'tmux: unknown option -- V':
-                raise exc.LibTmuxException(
-                    'libtmux supports tmux 1.8 and greater. This system'
-                    ' is running tmux 1.3 or earlier.')
-            raise exc.LibTmuxException(proc.stderr)
-
-        version = proc.stdout[0].split('tmux ')[1]
-
-    # Allow latest tmux HEAD
-    if version == 'master':
-        return version
-
-    version = re.sub(r'[a-z]', '', version)
-
-    if StrictVersion(version) <= StrictVersion("1.7"):
-        raise exc.LibTmuxException(
-            'libtmux only supports tmux 1.8 and greater. This system'
-            ' has %s installed. Upgrade your tmux to use libtmux.' % version
-        )
-    return version
+    if get_version() < LooseVersion(TMUX_MIN_VERSION):
+        if raises:
+            raise exc.VersionTooLow(
+                'libtmux only supports tmux %s and greater. This system'
+                ' has %s installed. Upgrade your tmux to use libtmux.' %
+                (TMUX_MIN_VERSION, get_version())
+            )
+        else:
+            return False
+    return True
 
 
 def session_check_name(session_name):
@@ -433,7 +526,7 @@ def session_check_name(session_name):
     These delimiters are reserved for noting session, window and pane.
 
     :param session_name: name of session
-    :type session_name: string
+    :type session_name: str
     :returns: void
     :raises: :exc:`exc.BadSessionName`
     """
@@ -445,3 +538,32 @@ def session_check_name(session_name):
     elif ':' in session_name:
         raise exc.BadSessionName(
             "tmux session name \"%s\" may not contain colons.", session_name)
+
+
+def handle_option_error(error):
+    """Raises exception if error in option command found.
+
+    Purpose: As of tmux 2.4, there are now 3 different types of option errors:
+
+    - unknown option
+    - invalid option
+    - ambiguous option
+
+    Before 2.4, unknown option was the user.
+
+    All errors raised will have the base error of :exc:`exc.OptionError`. So to
+    catch any option error, use ``except exc.OptionError``.
+
+    :param error: error response from subprocess call
+    :type error: str
+    :raises: :exc:`exc.OptionError`, :exc:`exc.UnknownOption`,
+        :exc:`exc.InvalidOption`, :exc:`excAmbiguousOption`
+    """
+    if 'unknown option' in error:
+        raise exc.UnknownOption(error)
+    elif 'invalid option' in error:
+        raise exc.InvalidOption(error)
+    elif 'ambiguous option' in error:
+        raise exc.AmbiguousOption(error)
+    else:
+        raise exc.OptionError(error)  # Raise generic option error

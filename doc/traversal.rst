@@ -1,10 +1,10 @@
-.. _Traversing:
+.. _Traversal:
 
-==========
-Traversing
-==========
+=========
+Traversal
+=========
 
-libtmux offers you a handy way to move around the hierachy of sessions,
+libtmux convenient access to move around the hierachy of sessions,
 windows and panes in tmux.
 
 this is done by libtmux's object abstraction of `target`\_s (the ``-t``
@@ -20,11 +20,11 @@ terminal one: start tmux in a seperate terminal::
 
     Make sure you have :ref:`libtmux installed <installation>`::
 
-        pip install libtmux
+       $ pip install libtmux
 
-    To upgrade:
+    To upgrade::
 
-        pip install -U libtmux
+       $ pip install -U libtmux
 
 terminal two, ``python`` or ``ptpython`` if you have it::
 

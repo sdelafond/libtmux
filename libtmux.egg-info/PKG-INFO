@@ -1,12 +1,13 @@
 Metadata-Version: 1.1
 Name: libtmux
-Version: 0.7.3
+Version: 0.7.5
 Summary: scripting library / orm for tmux
 Home-page: http://github.com/tony/libtmux/
 Author: Tony Narlock
 Author-email: tony@git-pull.com
 License: BSD
 Download-URL: https://pypi.python.org/pypi/libtmux
+Description-Content-Type: UNKNOWN
 Description: libtmux - scripting library for tmux
         
         |pypi| |docs| |build-status| |coverage| |license|

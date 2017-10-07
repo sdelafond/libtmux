@@ -11,6 +11,7 @@ import logging
 import os
 
 from . import exc, formats
+from ._compat import text_type
 from .common import EnvironmentMixin, TmuxMappingObject, \
     TmuxRelationalObject, session_check_name, handle_option_error
 from .window import Window
@@ -28,9 +29,9 @@ class Session(
     Holds :class:`Window` objects.
     """
 
-    #: unique child ID key used by :class:`TmuxRelationalObject`
+    #: unique child ID key for :class:`~libtmux.common.TmuxRelationalObject`
     child_id_attribute = 'window_id'
-    #: namespace used :class:`TmuxMappingObject`
+    #: namespace used :class:`~libtmux.common.TmuxMappingObject`
     formatter_prefix = 'session_'
 
     def __init__(self, server=None, **kwargs):
@@ -68,12 +69,17 @@ class Session(
 
         :rtype: :class:`server.cmd`
 
-        :versionchanged: 0.8
+        .. versionchanged:: 0.8
             Renamed from ``.tmux`` to ``.cmd``.
 
         """
-        if '-t' not in kwargs:
-            kwargs['-t'] = self.id
+        # if -t is not set in any arg yet
+        if not any('-t' in text_type(x) for x in args):
+            # insert -t immediately after 1st arg, as per tmux format
+            new_args = [args[0]]
+            new_args += ['-t', self.id]
+            new_args += args[1:]
+            args = new_args
         return self.server.cmd(*args, **kwargs)
 
     def attach_session(self):
@@ -261,7 +267,7 @@ class Session(
         """Property / alias to return :meth:`Session.list_windows`."""
         return self.list_windows()
 
-    #: Alias of :attr:`windows`, used by :class:`TmuxRelationalObject`
+    #: Alias :attr:`windows` for :class:`~libtmux.common.TmuxRelationalObject`
     children = windows
 
     @property

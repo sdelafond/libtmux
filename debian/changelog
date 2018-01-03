@@ -1,3 +1,10 @@
+python-libtmux (0.7.7-1) unstable; urgency=medium
+
+  [ Sébastien Delafond ]
+  * New upstream version 0.7.7
+
+ -- Sebastien Delafond <seb@debian.org>  Wed, 03 Jan 2018 11:33:34 +0100
+
 python-libtmux (0.7.5-1) unstable; urgency=medium
 
   * New upstream version 0.7.5

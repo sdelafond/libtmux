@@ -34,5 +34,6 @@ libtmux.egg-info/SOURCES.txt
 libtmux.egg-info/dependency_links.txt
 libtmux.egg-info/not-zip-safe
 libtmux.egg-info/top_level.txt
+requirements/dev.txt
 requirements/doc.txt
 requirements/test.txt

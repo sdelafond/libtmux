@@ -4,6 +4,8 @@ python-libtmux (0.8.0-1) unstable; urgency=medium
   * Bump-up Standards-Version
   * Use canonical URL for Vcs-Git
   * Use https for copyright-format URL
+  * Use https for homepage URL
+  * Use https for watch URL
 
  -- Sebastien Delafond <seb@debian.org>  Fri, 30 Mar 2018 13:26:48 +0200
 

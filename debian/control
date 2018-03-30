@@ -12,6 +12,8 @@ Package: python-libtmux
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
 Description: Python scripting library and ORM for tmux
+ libtmux is the tool behind tmuxp, a tmux workspace manager in python.
+ .
  Builds upon tmux's target and formats to create an object mapping to
  traverse, inspect and interact with live tmux sessions.
 
@@ -19,6 +21,8 @@ Package: python3-libtmux
 Architecture: all
 Depends: ${misc:Depends}, ${python3:Depends}
 Description: Python scripting library and ORM for tmux (python3)
+ libtmux is the tool behind tmuxp, a tmux workspace manager in python.
+ .
  Builds upon tmux's target and formats to create an object mapping to
  traverse, inspect and interact with live tmux sessions.
  .

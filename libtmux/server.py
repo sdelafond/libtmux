@@ -334,23 +334,10 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
 
         proc = self.cmd('has-session', '-t%s' % target_session)
 
-        if not proc.stdout:
+        if not proc.returncode:
             return True
-        if any(
-            x in proc.stdout for x in
-            ['failed to connect to server', 'error connecting to']
-        ):
-            return False
-        elif 'no server running' in proc.stdout:  # tmux 2.0
-            return False
-        elif 'can\'t find session' in proc.stdout:  # tmux 2.1
-            return False
-        elif 'bad session name' in proc.stdout:  # tmux >= 1.9
-            return False
-        elif 'session not found' in proc.stdout:
-            return False
-        else:
-            return True
+
+        return False
 
     def kill_server(self):
         """``$ tmux kill-server``."""
@@ -409,6 +396,8 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
                     kill_session=False,
                     attach=False,
                     start_directory=None,
+                    window_name=None,
+                    window_command=None,
                     *args,
                     **kwargs):
         """Return :class:`Session` from  ``$ tmux new-session``.
@@ -440,6 +429,18 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         :param start_directory: specifies the working directory in which the
             new session is created.
         :type start_directory: str
+
+        :param window_name: window name::
+
+            $ tmux new-session -n <window_name>
+
+        :type session_name: str
+        :param window_command: execute a command on starting the session.  The
+            window will close when the command exits.
+            NOTE: When this command exits the window will close.  This feature
+            is useful for long-running processes where the closing of the
+            window upon completion is desired.
+        :type window_command: str
 
         :raises: :exc:`exc.BadSessionName`
         :rtype: :class:`Session`
@@ -477,10 +478,16 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         if start_directory:
             tmux_args += ('-c', start_directory)
 
+        if window_name:
+            tmux_args += ('-n', window_name)
+
         # tmux 2.6 gives unattached sessions a tiny default area
         # no need send in -x/-y if they're in a client already, though
         if has_gte_version('2.6') and 'TMUX' not in os.environ:
             tmux_args += ('-x', 800, '-y', 600)
+
+        if window_command:
+            tmux_args += (window_command, )
 
         proc = self.cmd(
             'new-session',

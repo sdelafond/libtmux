@@ -1,5 +1,9 @@
 python-libtmux (0.8.2-1) unstable; urgency=medium
 
+  [Ondřej Nový]
+  * d/watch: Use https protocol
+  
+  [Sébastien Delafond]
   * Remove python2 package
   * Depend on tmux (Closes: #945782)
   * New upstream version 0.8.2

@@ -12,21 +12,40 @@ import os
 
 from . import exc, formats
 from ._compat import text_type
-from .common import EnvironmentMixin, TmuxMappingObject, \
-    TmuxRelationalObject, session_check_name, handle_option_error
+from .common import (
+    EnvironmentMixin,
+    TmuxMappingObject,
+    TmuxRelationalObject,
+    handle_option_error,
+    has_version,
+    session_check_name,
+)
 from .window import Window
 
 logger = logging.getLogger(__name__)
 
 
-class Session(
-    TmuxMappingObject,
-    TmuxRelationalObject,
-    EnvironmentMixin
-):
-    """:term:`tmux(1)` session.
+class Session(TmuxMappingObject, TmuxRelationalObject, EnvironmentMixin):
+    """
+    A :term:`tmux(1)` :term:`session` [#]_.
 
     Holds :class:`Window` objects.
+
+    Parameters
+    ----------
+    server : :class:`Server`
+
+    References
+    ----------
+    .. [#] tmux session. openbsd manpage for TMUX(1).
+           "When tmux is started it creates a new session with a single window
+           and displays it on screen..."
+
+           "A session is a single collection of pseudo terminals under the
+           management of tmux.  Each session has one or more windows linked to
+           it."
+
+       https://man.openbsd.org/tmux.1#DESCRIPTION. Accessed April 1st, 2018.
     """
 
     #: unique child ID key for :class:`~libtmux.common.TmuxRelationalObject`
@@ -46,9 +65,7 @@ class Session(
     @property
     def _info(self):
 
-        attrs = {
-            'session_id': str(self._session_id)
-        }
+        attrs = {'session_id': str(self._session_id)}
 
         def by(val):
             for key, value in attrs.items():
@@ -65,13 +82,18 @@ class Session(
             logger.error(e)
 
     def cmd(self, *args, **kwargs):
-        """Return :meth:`server.cmd`.
+        """
+        Return :meth:`server.cmd`.
 
-        :rtype: :class:`server.cmd`
+        Returns
+        -------
+        :class:`server.cmd`
 
+        Notes
+        -----
         .. versionchanged:: 0.8
-            Renamed from ``.tmux`` to ``.cmd``.
 
+            Renamed from ``.tmux`` to ``.cmd``.
         """
         # if -t is not set in any arg yet
         if not any('-t' in text_type(x) for x in args):
@@ -98,10 +120,13 @@ class Session(
             raise exc.LibTmuxException(proc.stderr)
 
     def switch_client(self):
-        """``$ tmux switch-client``.
+        """
+        Switch client to this session.
 
-        :param: target_session: str. note this accepts fnmatch(3).
-        :raises: :exc:`exc.LibTmuxException`
+        Raises
+        ------
+
+        :exc:`exc.LibTmuxException`
         """
         proc = self.cmd('switch-client', '-t%s' % self.id)
 
@@ -109,60 +134,78 @@ class Session(
             raise exc.LibTmuxException(proc.stderr)
 
     def rename_session(self, new_name):
-        """Rename session and return new :class:`Session` object.
+        """
+        Rename session and return new :class:`Session` object.
 
-        :param new_name: new session name
-        :type new_name: str
-        :raises: :exc:`exc.BadSessionName`
-        :rtype: :class:`Session`
+        Parameters
+        ----------
+        new_name : str
+            new session name
 
+        Returns
+        -------
+        :class:`Session`
+
+        Raises
+        ------
+        :exc:`exc.BadSessionName`
         """
         session_check_name(new_name)
 
-        proc = self.cmd(
-            'rename-session',
-            '-t%s' % self.id,
-            new_name
-        )
+        proc = self.cmd('rename-session', new_name)
 
         if proc.stderr:
-            raise exc.LibTmuxException(proc.stderr)
+            if has_version('2.7') and 'no current client' in proc.stderr:
+                """tmux 2.7 raises "no current client" warning on BSD systems.
+
+                Should be fixed next release:
+
+                - https://www.mail-archive.com/tech@openbsd.org/msg45186.html
+                - https://marc.info/?l=openbsd-cvs&m=152183263526828&w=2
+                """
+                pass
+            else:
+                raise exc.LibTmuxException(proc.stderr)
 
         return self
 
-    def new_window(self,
-                   window_name=None,
-                   start_directory=None,
-                   attach=True,
-                   window_index='',
-                   window_shell=None):
-        """Return :class:`Window` from ``$ tmux new-window``.
+    def new_window(
+        self,
+        window_name=None,
+        start_directory=None,
+        attach=True,
+        window_index='',
+        window_shell=None,
+    ):
+        """
+        Return :class:`Window` from ``$ tmux new-window``.
 
         By default, this will make the window active. For the new window
         to be created and not set to current, pass in ``attach=False``.
 
-        :param window_name: window name.
-        :type window_name: str
-        :param start_directory: specifies the working directory in which the
-            new window is created.
-        :type start_directory: str
-        :param attach: make new window the current window after creating it,
-                       default True.
-        :param window_index: create the new window at the given index position.
-            Default is empty string which will create the window in the next
-            available position.
-        :type window_index: str
-        :param window_shell: execute a command on starting the window.  The
-            window will close when the command exits.
-            NOTE: When this command exits the window will close.  This feature
-            is useful for long-running processes where the closing of the
-            window upon completion is desired.
-        :type window_command: str
-        :param type: bool
-        :rtype: :class:`Window`
+        Parameters
+        ----------
+        window_name : str, optional
+        start_directory : str, optional
+            working directory in which the new window is created.
+        attach : bool, optional
+            make new window the current window after creating it, default True.
+        window_index : str
+            create the new window at the given index position. Default is empty
+            string which will create the window in the next available position.
+        window_shell : str
+            execute a command on starting the window.  The window will close
+            when the command exits.
 
+            .. note::
+                When this command exits the window will close.  This feature is
+                useful for long-running processes where the closing of the
+                window upon completion is desired.
+
+        Returns
+        -------
+        :class:`Window`
         """
-
         wformats = ['session_name', 'session_id'] + formats.WINDOW_FORMATS
         tmux_formats = ['#{%s}' % f for f in wformats]
 
@@ -171,24 +214,21 @@ class Session(
         if not attach:
             window_args += ('-d',)
 
-        window_args += (
-            '-P',
-        )
+        window_args += ('-P',)
 
         if start_directory:
             # as of 2014-02-08 tmux 1.9-dev doesn't expand ~ in new-window -c.
             start_directory = os.path.expanduser(start_directory)
             window_args += ('-c%s' % start_directory,)
 
-        window_args += (
-            '-F"%s"' % '\t'.join(tmux_formats),  # output
-        )
+        window_args += ('-F"%s"' % '\t'.join(tmux_formats),)  # output
         if window_name:
             window_args += ('-n%s' % window_name,)
 
         window_args += (
             # empty string for window_index will use the first one available
-            '-t%s:%s' % (self.id, window_index),
+            '-t%s:%s'
+            % (self.id, window_index),
         )
 
         if window_shell:
@@ -212,14 +252,15 @@ class Session(
         return window
 
     def kill_window(self, target_window=None):
-        """``$ tmux kill-window``.
+        """Close a tmux window, and all panes inside it, ``$ tmux kill-window``
 
         Kill the current window or the window at ``target-window``. removing it
         from any sessions to which it is linked.
 
-        :param target_window: the ``target window``.
-        :type target_window: str
-
+        Parameters
+        ----------
+        target_window : str, optional
+            window to kill
         """
 
         if target_window:
@@ -238,9 +279,7 @@ class Session(
     def _list_windows(self):
         windows = self.server._update_windows()._windows
 
-        windows = [
-            w for w in windows if w['session_id'] == self.id
-        ]
+        windows = [w for w in windows if w['session_id'] == self.id]
 
         return windows
 
@@ -253,12 +292,11 @@ class Session(
     def list_windows(self):
         """Return a list of :class:`Window` from the ``tmux(1)`` session.
 
-        :rtype: :class:`Window`
-
+        Returns
+        -------
+        :class:`Window`
         """
-        windows = [
-            w for w in self._windows if w['session_id'] == self._session_id
-        ]
+        windows = [w for w in self._windows if w['session_id'] == self._session_id]
 
         return [Window(session=self, **window) for window in windows]
 
@@ -272,10 +310,12 @@ class Session(
 
     @property
     def attached_window(self):
-        """Return active :class:`Window` object.
+        """
+        Return active :class:`Window` object.
 
-        :rtype: :class:`Window`
-
+        Returns
+        -------
+        :class:`Window`
         """
         active_windows = []
         for window in self._windows:
@@ -290,21 +330,31 @@ class Session(
             return active_windows[0]
         else:
             raise exc.LibTmuxException(
-                'multiple active windows found. %s' % active_windows)
+                'multiple active windows found. %s' % active_windows
+            )
 
         if len(self._windows) == int(0):
             raise exc.LibTmuxException('No Windows')
 
     def select_window(self, target_window):
-        """Return :class:`Window` selected via ``$ tmux select-window``.
+        """
+        Return :class:`Window` selected via ``$ tmux select-window``.
 
-        :param: window: ``target_window`` also 'last-window' (``-l``),
-                        'next-window' (``-n``), or 'previous-window' (``-p``)
-        :type window: integer
-        :rtype: :class:`Window`
+        Parameters
+        ----------
+        window : str
+            ``target_window`` also 'last-window' (``-l``), 'next-window'
+            (``-n``), or 'previous-window' (``-p``)
 
-        :todo: assure ``-l``, ``-n``, ``-p`` work.
+        Returns
+        -------
+        :class:`Window`
 
+        Notes
+        -----
+        .. todo::
+
+            assure ``-l``, ``-n``, ``-p`` work.
         """
 
         target = '-t%s' % target_window
@@ -322,21 +372,30 @@ class Session(
 
         return self.attached_window.attached_pane
 
-    def set_option(self, option, value, g=False):
-        """Set option ``$ tmux set-option <option> <value>``.
+    def set_option(self, option, value, _global=False):
+        """
+        Set option ``$ tmux set-option <option> <value>``.
 
-        todo: needs tests
+        Parameters
+        ----------
+        option : str
+            the window option. such as 'default-shell'.
+        value : str, int, or bool
+            True/False will turn in 'on' and 'off'. You can also enter 'on' or
+            'off' directly.
+        _global : bool, optional
+            check for option globally across all servers (-g)
 
-        :param option: the window option. such as 'default-shell'.
-        :type option: str
-        :param value: window value. True/False will turn in 'on' and 'off'. You
-            can also enter 'on' or 'off' directly.
-        :type value: bool
-        :param global: check for option globally across all servers (-g)
-        :type global: bool
-        :raises: :exc:`exc.OptionError`, :exc:`exc.UnknownOption`,
-            :exc:`exc.InvalidOption`, :exc:`exc.AmbiguousOption`
+        Raises
+        ------
+        :exc:`exc.OptionError`, :exc:`exc.UnknownOption`,
+        :exc:`exc.InvalidOption`, :exc:`exc.AmbiguousOption`
 
+        Notes
+        -----
+        .. todo::
+
+            Needs tests
         """
 
         if isinstance(value, bool) and value:
@@ -346,44 +405,50 @@ class Session(
 
         tmux_args = tuple()
 
-        if g:
+        if _global:
             tmux_args += ('-g',)
 
-        tmux_args += (option, value,)
+        tmux_args += (option, value)
 
-        proc = self.cmd(
-            'set-option', *tmux_args
-        )
+        proc = self.cmd('set-option', *tmux_args)
 
         if isinstance(proc.stderr, list) and len(proc.stderr):
             handle_option_error(proc.stderr[0])
 
-    def show_options(self, option=None, g=False):
-        """Return a dict of options for the window.
+    def show_options(self, option=None, _global=False):
+        """
+        Return a dict of options for the window.
 
         For familiarity with tmux, the option ``option`` param forwards to pick
         a single option, forwarding to :meth:`Session.show_option`.
 
-        :param option: optional. show a single option.
-        :type option: str
-        :param g: Pass ``-g`` flag for global variable (server-wide)
-        :type g: bool
-        :rtype: :py:obj:`dict`
+        Parameters
+        ----------
+        option : str, optional
+            name of option, e.g. 'visual-silence'. Defaults to None, which
+            returns all options.
+        _global : bool, optional
+            Pass ``-g`` flag for global variable (server-wide)
 
+        Returns
+        -------
+        :py:obj:`dict`
+
+        Notes
+        -----
+        Uses ``_global`` for keyword name instead of ``global`` to avoid
+        colliding with reserved keyword.
         """
-
         tmux_args = tuple()
 
-        if g:
+        if _global:
             tmux_args += ('-g',)
 
         if option:
-            return self.show_option(option, g=g)
+            return self.show_option(option, _global=_global)
         else:
             tmux_args += ('show-options',)
-            session_options = self.cmd(
-                *tmux_args
-            ).stdout
+            session_options = self.cmd(*tmux_args).stdout
 
         session_options = [tuple(item.split(' ')) for item in session_options]
 
@@ -395,31 +460,41 @@ class Session(
 
         return session_options
 
-    def show_option(self, option, g=False):
+    def show_option(self, option, _global=False):
         """Return a list of options for the window.
 
-        :todo: test and return True/False for on/off string
+        Parameters
+        ----------
+        option : str
+            option name
+        _global : bool, optional
+            use global option scope, same as ``-g``
 
-        :param option: option to return.
-        :type option: str
-        :param global: check for option globally across all servers (-g)
-        :type global: bool
-        :rtype: str, int or bool
-        :raises: :exc:`exc.OptionError`, :exc:`exc.UnknownOption`,
-            :exc:`exc.InvalidOption`, :exc:`exc.AmbiguousOption`
+        Returns
+        -------
+        str, int, or bool
 
+        Raises
+        ------
+        :exc:`exc.OptionError`, :exc:`exc.UnknownOption`,
+        :exc:`exc.InvalidOption`, :exc:`exc.AmbiguousOption`
+
+        Notes
+        -----
+        Uses ``_global`` for keyword name instead of ``global`` to avoid
+        colliding with reserved keyword.
+
+        Test and return True/False for on/off string.
         """
 
         tmux_args = tuple()
 
-        if g:
+        if _global:
             tmux_args += ('-g',)
 
         tmux_args += (option,)
 
-        cmd = self.cmd(
-            'show-options', *tmux_args
-        )
+        cmd = self.cmd('show-options', *tmux_args)
 
         if isinstance(cmd.stderr, list) and len(cmd.stderr):
             handle_option_error(cmd.stderr[0])
@@ -435,8 +510,4 @@ class Session(
         return option[1]
 
     def __repr__(self):
-        return "%s(%s %s)" % (
-            self.__class__.__name__,
-            self.id,
-            self.name
-        )
+        return "%s(%s %s)" % (self.__class__.__name__, self.id, self.name)

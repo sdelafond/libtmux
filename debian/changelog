@@ -1,3 +1,10 @@
+python-libtmux (0.8.2-2) unstable; urgency=medium
+
+  [Ondřej Nový]
+  * d/watch: Use https protocol
+
+ -- Sebastien Delafond <seb@debian.org>  Sat, 21 Dec 2019 08:55:12 +0100
+  
 python-libtmux (0.8.2-1) unstable; urgency=medium
 
   [Ondřej Nový]
@@ -8,7 +15,7 @@ python-libtmux (0.8.2-1) unstable; urgency=medium
   * Depend on tmux (Closes: #945782)
   * New upstream version 0.8.2
 
- -- Sebastien Delafond <seb@debian.org>  Sat, 21 Dec 2019 08:34:11 +0100
+ -- Sebastien Delafond <seb@debian.org>  Sat, 21 Dec 2019 08:52:12 +0100
 
 python-libtmux (0.8.0-1) unstable; urgency=medium
 

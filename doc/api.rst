@@ -70,6 +70,8 @@ Internals
 
 .. automethod:: libtmux.common.which
 
+.. automethod:: libtmux.common.get_version
+
 .. automethod:: libtmux.common.has_version
 
 .. automethod:: libtmux.common.has_gt_version
@@ -117,3 +119,5 @@ Test tools
 .. automethod:: libtmux.test.temp_session
 
 .. automethod:: libtmux.test.temp_window
+
+.. autoclass:: libtmux.test.EnvironmentVarGuard

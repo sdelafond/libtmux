@@ -11,8 +11,13 @@ import logging
 import os
 
 from . import exc, formats
-from .common import EnvironmentMixin, TmuxRelationalObject, tmux_cmd, \
-    session_check_name, has_gte_version
+from .common import (
+    EnvironmentMixin,
+    TmuxRelationalObject,
+    has_gte_version,
+    session_check_name,
+    tmux_cmd,
+)
 from .session import Session
 
 logger = logging.getLogger(__name__)
@@ -20,7 +25,8 @@ logger = logging.getLogger(__name__)
 
 class Server(TmuxRelationalObject, EnvironmentMixin):
 
-    """The :term:`tmux(1)` server.
+    """
+    The :term:`tmux(1)` :term:`server` [#]_.
 
     - :attr:`Server._sessions` [:class:`Session`, ...]
 
@@ -32,6 +38,25 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
 
     When instantiated stores information on live, running tmux server.
 
+    Parameters
+    ----------
+    socket_name : str, optional
+    socket_path : str, optional
+    config_file : str, optional
+    colors : str, optional
+
+    References
+    ----------
+    .. [#] CLIENTS AND SESSIONS. openbsd manpage for TMUX(1)
+           "The tmux server manages clients, sessions, windows and panes.
+           Clients are attached to sessions to interact with them, either when
+           they are created with the new-session command, or later with the
+           attach-session command. Each session has one or more windows linked
+           into it. Windows may be linked to multiple sessions and are made up
+           of one or more panes, each of which contains a pseudo terminal."
+
+       https://man.openbsd.org/tmux.1#CLIENTS_AND_SESSIONS.
+       Accessed April 1st, 2018.
     """
 
     #: ``[-L socket-name]``
@@ -72,13 +97,18 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
             self.colors = colors
 
     def cmd(self, *args, **kwargs):
-        """Execute tmux command and return output.
+        """
+        Execute tmux command and return output.
 
-        :rtype: :class:`common.tmux_cmd`
+        Returns
+        -------
+        :class:`common.tmux_cmd`
 
+        Notes
+        -----
         .. versionchanged:: 0.8
-            Renamed from ``.tmux`` to ``.cmd``.
 
+            Renamed from ``.tmux`` to ``.cmd``.
         """
 
         args = list(args)
@@ -99,28 +129,25 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         return tmux_cmd(*args, **kwargs)
 
     def _list_sessions(self):
-        """Return list of sessions in :py:obj:`dict` form.
+        """
+        Return list of sessions in :py:obj:`dict` form.
 
         Retrieved from ``$ tmux(1) list-sessions`` stdout.
 
         The :py:obj:`list` is derived from ``stdout`` in
         :class:`common.tmux_cmd` which wraps :py:class:`subprocess.Popen`.
 
-        :rtype: :py:obj:`list` of :py:obj:`dict`
-
+        Returns
+        -------
+        list of dict
         """
 
         sformats = formats.SESSION_FORMATS
         tmux_formats = ['#{%s}' % f for f in sformats]
 
-        tmux_args = (
-            '-F%s' % '\t'.join(tmux_formats),   # output
-        )
+        tmux_args = ('-F%s' % '\t'.join(tmux_formats),)  # output
 
-        proc = self.cmd(
-            'list-sessions',
-            *tmux_args
-        )
+        proc = self.cmd('list-sessions', *tmux_args)
 
         if proc.stderr:
             raise exc.LibTmuxException(proc.stderr)
@@ -130,13 +157,11 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         sessions = proc.stdout
 
         # combine format keys with values returned from ``tmux list-sessions``
-        sessions = [dict(zip(
-            sformats, session.split('\t'))) for session in sessions]
+        sessions = [dict(zip(sformats, session.split('\t'))) for session in sessions]
 
         # clear up empty dict
         sessions = [
-            dict((k, v) for k, v in session.items() if v)
-            for session in sessions
+            dict((k, v) for k, v in session.items() if v) for session in sessions
         ]
 
         return sessions
@@ -148,41 +173,44 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         return self._list_sessions()
 
     def list_sessions(self):
-        """Return list of :class:`Session` from the ``tmux(1)`` session.
-
-        :rtype: :py:obj:`list` of :class:`Session`
-
         """
-        return [
-            Session(server=self, **s) for s in self._sessions
-        ]
+        Return list of :class:`Session` from the ``tmux(1)`` session.
+
+        Returns
+        -------
+        list of :class:`Session`
+        """
+        return [Session(server=self, **s) for s in self._sessions]
 
     @property
     def sessions(self):
         """Property / alias to return :meth:`~.list_sessions`."""
         return self.list_sessions()
+
     #: Alias :attr:`sessions` for :class:`~libtmux.common.TmuxRelationalObject`
     children = sessions
 
     def _list_windows(self):
-        """Return list of windows in :py:obj:`dict` form.
+        """
+        Return list of windows in :py:obj:`dict` form.
 
         Retrieved from ``$ tmux(1) list-windows`` stdout.
 
         The :py:obj:`list` is derived from ``stdout`` in
         :class:`common.tmux_cmd` which wraps :py:class:`subprocess.Popen`.
 
-        :rtype: list
-
+        Returns
+        -------
+        list of dict
         """
 
         wformats = ['session_name', 'session_id'] + formats.WINDOW_FORMATS
         tmux_formats = ['#{%s}' % format for format in wformats]
 
         proc = self.cmd(
-            'list-windows',                     # ``tmux list-windows``
+            'list-windows',  # ``tmux list-windows``
             '-a',
-            '-F%s' % '\t'.join(tmux_formats),   # output
+            '-F%s' % '\t'.join(tmux_formats),  # output
         )
 
         if proc.stderr:
@@ -193,13 +221,10 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         wformats = ['session_name', 'session_id'] + formats.WINDOW_FORMATS
 
         # combine format keys with values returned from ``tmux list-windows``
-        windows = [dict(zip(
-            wformats, window.split('\t'))) for window in windows]
+        windows = [dict(zip(wformats, window.split('\t'))) for window in windows]
 
         # clear up empty dict
-        windows = [
-            dict((k, v) for k, v in window.items() if v) for window in windows
-        ]
+        windows = [dict((k, v) for k, v in window.items() if v) for window in windows]
 
         # tmux < 1.8 doesn't have window_id, use window_name
         for w in windows:
@@ -214,38 +239,40 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         return self._windows
 
     def _update_windows(self):
-        """Update internal window data and return ``self`` for chainability.
+        """
+        Update internal window data and return ``self`` for chainability.
 
-        :rtype: :class:`Server`
-
+        Returns
+        -------
+        :class:`Server`
         """
         self._list_windows()
         return self
 
     def _list_panes(self):
-        """Return list of panes in :py:obj:`dict` form.
+        """
+        Return list of panes in :py:obj:`dict` form.
 
         Retrieved from ``$ tmux(1) list-panes`` stdout.
 
         The :py:obj:`list` is derived from ``stdout`` in
         :class:`util.tmux_cmd` which wraps :py:class:`subprocess.Popen`.
 
-        :rtype: list
-
+        Returns
+        -------
+        list
         """
 
         pformats = [
-            'session_name', 'session_id',
-            'window_index', 'window_id',
-            'window_name'
+            'session_name',
+            'session_id',
+            'window_index',
+            'window_id',
+            'window_name',
         ] + formats.PANE_FORMATS
         tmux_formats = ['#{%s}\t' % f for f in pformats]
 
-        proc = self.cmd(
-            'list-panes',
-            '-a',
-            '-F%s' % ''.join(tmux_formats),     # output
-        )
+        proc = self.cmd('list-panes', '-a', '-F%s' % ''.join(tmux_formats))  # output
 
         if proc.stderr:
             raise exc.LibTmuxException(proc.stderr)
@@ -253,22 +280,22 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         panes = proc.stdout
 
         pformats = [
-            'session_name', 'session_id',
-            'window_index', 'window_id', 'window_name'
+            'session_name',
+            'session_id',
+            'window_index',
+            'window_id',
+            'window_name',
         ] + formats.PANE_FORMATS
 
         # combine format keys with values returned from ``tmux list-panes``
-        panes = [dict(zip(
-            pformats, window.split('\t'))) for window in panes]
+        panes = [dict(zip(pformats, window.split('\t'))) for window in panes]
 
         # clear up empty dict
         panes = [
             dict(
-                (k, v) for k, v in window.items()
-                if v or
-                k == 'pane_current_path'
-            )   # preserve pane_current_path, in case it entered a new process
-                # where we may not get a cwd from.
+                (k, v) for k, v in window.items() if v or k == 'pane_current_path'
+            )  # preserve pane_current_path, in case it entered a new process
+            # where we may not get a cwd from.
             for window in panes
         ]
 
@@ -280,22 +307,26 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         return self._panes
 
     def _update_panes(self):
-        """Update internal pane data and return ``self`` for chainability.
+        """
+        Update internal pane data and return ``self`` for chainability.
 
-        :rtype: :class:`Server`
-
+        Returns
+        -------
+        :class:`Server`
         """
         self._list_panes()
         return self
 
     @property
     def attached_sessions(self):
-        """Return active :class:`Session` objects.
+        """
+        Return active :class:`Session` objects.
 
         This will not work where multiple tmux sessions are attached.
 
-        :rtype: :py:obj:`list` of :class:`Session`
-
+        Returns
+        -------
+        list of :class:`Session`
         """
 
         sessions = self._sessions
@@ -310,22 +341,28 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
                 else:
                     continue
 
-        return [
-            Session(server=self, **s) for s in attached_sessions
-        ] or None
+        return [Session(server=self, **s) for s in attached_sessions] or None
 
     def has_session(self, target_session, exact=True):
-        """Return True if session exists. ``$ tmux has-session``.
+        """
+        Return True if session exists. ``$ tmux has-session``.
 
-        :param target_session: session name
-        :type target_session: str
-        :param exact: match the session name exactly.
-            tmux uses fnmatch by default. Internally prepends ``=`` to the
-            session in ``$ tmux has-session``. tmux 2.1 and up only.
-        :type exact: bool
-        :raises: :exc:`exc.BadSessionName`
-        :rtype: bool
+        Parameters
+        ----------
+        target_session : str
+            session name
+        exact : bool
+            match the session name exactly. tmux uses fnmatch by default.
+            Internally prepends ``=`` to the session in ``$ tmux has-session``.
+            tmux 2.1 and up only.
 
+        Raises
+        ------
+        :exc:`exc.BadSessionName`
+
+        Returns
+        -------
+        bool
         """
         session_check_name(target_session)
 
@@ -344,13 +381,22 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         self.cmd('kill-server')
 
     def kill_session(self, target_session=None):
-        """Kill the tmux session with ``$ tmux kill-session``, return ``self``.
+        """
+        Kill the tmux session with ``$ tmux kill-session``, return ``self``.
 
-        :param: target_session: str. note this accepts ``fnmatch(3)``. 'asdf'
-            will kill 'asdfasd'.
-        :raises: :exc:`exc.BadSessionName`
-        :rtype: :class:`Server`
+        Parameters
+        ----------
+        target_session : str, optional
+            target_session: str. note this accepts ``fnmatch(3)``. 'asdf' will
+            kill 'asdfasd'.
 
+        Returns
+        -------
+        :class:`Server`
+
+        Raises
+        ------
+        :exc:`exc.BadSessionName`
         """
         session_check_name(target_session)
 
@@ -362,10 +408,17 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         return self
 
     def switch_client(self, target_session):
-        """``$ tmux switch-client``.
+        """
+        ``$ tmux switch-client``.
 
-        :param: target_session: str. name of the session. fnmatch(3) works.
-        :raises: :exc:`exc.BadSessionName`
+        Parameters
+        ----------
+        target_session : str
+            name of the session. fnmatch(3) works.
+
+        Raises
+        ------
+        :exc:`exc.BadSessionName`
         """
         session_check_name(target_session)
 
@@ -377,8 +430,14 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
     def attach_session(self, target_session=None):
         """``$ tmux attach-session`` aka alias: ``$ tmux attach``.
 
-        :param: target_session: str. name of the session. fnmatch(3) works.
-        :raises: :exc:`exc.BadSessionName`
+        Parameters
+        ----------
+        target_session : str
+            name of the session. fnmatch(3) works.
+
+        Raises
+        ------
+        :exc:`exc.BadSessionName`
         """
         session_check_name(target_session)
 
@@ -391,16 +450,19 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         if proc.stderr:
             raise exc.LibTmuxException(proc.stderr)
 
-    def new_session(self,
-                    session_name=None,
-                    kill_session=False,
-                    attach=False,
-                    start_directory=None,
-                    window_name=None,
-                    window_command=None,
-                    *args,
-                    **kwargs):
-        """Return :class:`Session` from  ``$ tmux new-session``.
+    def new_session(
+        self,
+        session_name=None,
+        kill_session=False,
+        attach=False,
+        start_directory=None,
+        window_name=None,
+        window_command=None,
+        *args,
+        **kwargs
+    ):
+        """
+        Return :class:`Session` from  ``$ tmux new-session``.
 
         Uses ``-P`` flag to print session info, ``-F`` for return formatting
         returns new Session object.
@@ -409,42 +471,43 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
         ``$ tmux new-session -Ad`` will move to the session name if it already
         exists. todo: make an option to handle this.
 
-        :param session_name: session name::
+        Parameters
+        ----------
+        session_name : str, optional
+            ::
 
-            $ tmux new-session -s <session_name>
+                $ tmux new-session -s <session_name>
+        attach : bool, optional
+            create session in the foreground. ``attach=False`` is equivalent
+            to::
 
-        :type session_name: str
+                $ tmux new-session -d
 
-        :param attach: create session in the foreground. ``attach=False`` is
-            equivalent to::
-
-            $ tmux new-session -d
-
-        :type attach: bool
-
-        :param kill_session: Kill current session if ``$ tmux has-session``
-                             Useful for testing workspaces.
-        :type kill_session: bool
-
-        :param start_directory: specifies the working directory in which the
+        Other Parameters
+        ----------------
+        kill_session : bool, optional
+            Kill current session if ``$ tmux has-session``.
+            Useful for testing workspaces.
+        start_directory : str, optional
+            specifies the working directory in which the
             new session is created.
-        :type start_directory: str
+        window_name : str, optional
+            ::
 
-        :param window_name: window name::
+                $ tmux new-session -n <window_name>
+        window_command : str
+            execute a command on starting the session.  The window will close
+            when the command exits. NOTE: When this command exits the window
+            will close.  This feature is useful for long-running processes
+            where the closing of the window upon completion is desired.
 
-            $ tmux new-session -n <window_name>
+        Returns
+        -------
+        :class:`Session`
 
-        :type session_name: str
-        :param window_command: execute a command on starting the session.  The
-            window will close when the command exits.
-            NOTE: When this command exits the window will close.  This feature
-            is useful for long-running processes where the closing of the
-            window upon completion is desired.
-        :type window_command: str
-
-        :raises: :exc:`exc.BadSessionName`
-        :rtype: :class:`Session`
-
+        Raises
+        ------
+        :exc:`exc.BadSessionName`
         """
         session_check_name(session_name)
 
@@ -453,9 +516,7 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
                 self.cmd('kill-session', '-t%s' % session_name)
                 logger.info('session %s exists. killed it.' % session_name)
             else:
-                raise exc.TmuxSessionExists(
-                    'Session named %s exists' % session_name
-                )
+                raise exc.TmuxSessionExists('Session named %s exists' % session_name)
 
         logger.debug('creating session %s' % session_name)
 
@@ -469,7 +530,8 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
 
         tmux_args = (
             '-s%s' % session_name,
-            '-P', '-F%s' % '\t'.join(tmux_formats),   # output
+            '-P',
+            '-F%s' % '\t'.join(tmux_formats),  # output
         )
 
         if not attach:
@@ -487,12 +549,9 @@ class Server(TmuxRelationalObject, EnvironmentMixin):
             tmux_args += ('-x', 800, '-y', 600)
 
         if window_command:
-            tmux_args += (window_command, )
+            tmux_args += (window_command,)
 
-        proc = self.cmd(
-            'new-session',
-            *tmux_args
-        )
+        proc = self.cmd('new-session', *tmux_args)
 
         if proc.stderr:
             raise exc.LibTmuxException(proc.stderr)

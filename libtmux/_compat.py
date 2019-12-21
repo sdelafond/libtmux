@@ -26,6 +26,7 @@ if PY2:
     import ConfigParser as configparser
 
     from itertools import izip, imap
+
     range_type = xrange
 
     cmp = cmp
@@ -44,11 +45,12 @@ if PY2:
     def console_to_str(s):
         return s.decode('utf_8', 'ignore')
 
+
 else:
     unichr = chr
     text_type = str
     string_types = (str,)
-    integer_types = (int, )
+    integer_types = (int,)
 
     text_to_native = lambda s, enc: s
 
@@ -85,8 +87,14 @@ else:
 
     def reraise(tp, value, tb=None):
         if value.__traceback__ is not tb:
-            raise(value.with_traceback(tb))
+            raise (value.with_traceback(tb))
         raise value
 
 
 number_types = integer_types + (float,)
+
+def str_from_console(s):
+    try:
+        return text_type(s)
+    except UnicodeDecodeError:
+        return text_type(s, encoding='utf_8')

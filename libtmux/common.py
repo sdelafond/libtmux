@@ -14,7 +14,7 @@ import sys
 from distutils.version import LooseVersion
 
 from . import exc
-from ._compat import console_to_str
+from ._compat import console_to_str, str_from_console
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,9 @@ TMUX_MAX_VERSION = '2.4'
 
 class EnvironmentMixin(object):
 
-    """Mixin class for managing session and server level environment
-    variables in tmux.
-
+    """
+    Mixin class for managing session and server level environment variables in
+    tmux.
     """
 
     _add_option = None
@@ -39,14 +39,16 @@ class EnvironmentMixin(object):
         self._add_option = add_option
 
     def set_environment(self, name, value):
-        """Set environment ``$ tmux set-environment <name> <value>``.
-
-        :param name: the environment variable name. such as 'PATH'.
-        :type option: str
-        :param value: environment value.
-        :type value: str
         """
+        Set environment ``$ tmux set-environment <name> <value>``.
 
+        Parameters
+        ----------
+        name : str
+            the environment variable name. such as 'PATH'.
+        option : str
+            environment value.
+        """
         args = ['set-environment']
         if self._add_option:
             args += [self._add_option]
@@ -61,12 +63,14 @@ class EnvironmentMixin(object):
             raise ValueError('tmux set-environment stderr: %s' % proc.stderr)
 
     def unset_environment(self, name):
-        """Unset environment variable ``$ tmux set-environment -u <name>``.
-
-        :param name: the environment variable name. such as 'PATH'.
-        :type option: str
         """
+        Unset environment variable ``$ tmux set-environment -u <name>``.
 
+        Parameters
+        ----------
+        name : str
+            the environment variable name. such as 'PATH'.
+        """
         args = ['set-environment']
         if self._add_option:
             args += [self._add_option]
@@ -82,10 +86,11 @@ class EnvironmentMixin(object):
     def remove_environment(self, name):
         """Remove environment variable ``$ tmux set-environment -r <name>``.
 
-        :param name: the environment variable name. such as 'PATH'.
-        :type option: str
+        Parameters
+        ----------
+        name : str
+            the environment variable name. such as 'PATH'.
         """
-
         args = ['set-environment']
         if self._add_option:
             args += [self._add_option]
@@ -99,13 +104,21 @@ class EnvironmentMixin(object):
             raise ValueError('tmux set-environment stderr: %s' % proc.stderr)
 
     def show_environment(self, name=None):
-        """Show environment ``$tmux show-environment -t [session] <name>``.
+        """Show environment ``$ tmux show-environment -t [session] <name>``.
 
         Return dict of environment variables for the session or the value of a
         specific variable if the name is specified.
 
-        :param name: the environment variable name. such as 'PATH'.
-        :type option: str
+        Parameters
+        ----------
+        name : str
+            the environment variable name. such as 'PATH'.
+
+        Returns
+        -------
+        str or dict
+            environmental variables in dict, if no name, or str if name
+            entered.
         """
         tmux_args = ['show-environment']
         if self._add_option:
@@ -131,15 +144,21 @@ class EnvironmentMixin(object):
 
 class tmux_cmd(object):
 
-    """:term:`tmux(1)` command via :py:mod:`subprocess`.
+    """
+    :term:`tmux(1)` command via :py:mod:`subprocess`.
 
-    :param tmux_search_paths: Default PATHs to search tmux for, defaults to
-        ``default_paths`` used in :func:`which`.
-    :type tmux_search_paths: list
-    :param append_env_path: Append environment PATHs to tmux search paths.
-    :type append_env_path: bool
+    Parameters
+    ----------
+    tmux_search_paths : list, optional
+        Default PATHs to search tmux for, defaults to ``default_paths`` used
+        in :func:`which`.
+    append_env_path : bool
+        Append environment PATHs to tmux search paths. True by default.
 
-    Usage::
+    Examples
+    --------
+
+    .. code-block:: python
 
         proc = tmux_cmd('new-session', '-s%' % 'my session')
 
@@ -156,33 +175,34 @@ class tmux_cmd(object):
 
         $ tmux new-session -s my session
 
+    Notes
+    -----
+
     .. versionchanged:: 0.8
         Renamed from ``tmux`` to ``tmux_cmd``.
-
     """
 
     def __init__(self, *args, **kwargs):
         tmux_bin = which(
             'tmux',
-            default_paths=kwargs.get('tmux_search_paths', [
-                '/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'
-            ]),
-            append_env_path=kwargs.get('append_env_path', True)
+            default_paths=kwargs.get(
+                'tmux_search_paths',
+                ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
+            ),
+            append_env_path=kwargs.get('append_env_path', True),
         )
         if not tmux_bin:
-            raise(exc.TmuxCommandNotFound)
+            raise (exc.TmuxCommandNotFound)
 
         cmd = [tmux_bin]
         cmd += args  # add the command arguments to cmd
-        cmd = [str(c) for c in cmd]
+        cmd = [str_from_console(c) for c in cmd]
 
         self.cmd = cmd
 
         try:
             self.process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             self.process.wait()
             stdout = self.process.stdout.read()
@@ -191,12 +211,7 @@ class tmux_cmd(object):
             self.process.stderr.close()
             returncode = self.process.returncode
         except Exception as e:
-            logger.error(
-                'Exception for %s: \n%s' % (
-                    subprocess.list2cmdline(cmd),
-                    e
-                )
-            )
+            logger.error('Exception for %s: \n%s' % (subprocess.list2cmdline(cmd), e))
 
         self.returncode = returncode
 
@@ -212,10 +227,7 @@ class tmux_cmd(object):
             if not self.stdout:
                 self.stdout = self.stderr[0]
 
-        logger.debug(
-            'self.stdout for %s: \n%s' %
-            (' '.join(cmd), self.stdout)
-        )
+        logger.debug('self.stdout for %s: \n%s' % (' '.join(cmd), self.stdout))
 
 
 class TmuxMappingObject(collections.MutableMapping):
@@ -263,9 +275,8 @@ class TmuxMappingObject(collections.MutableMapping):
     def __getattr__(self, key):
         try:
             return self._info[self.formatter_prefix + key]
-        except:
-            raise AttributeError('%s has no property %s' %
-                                 (self.__class__, key))
+        except KeyError:
+            raise AttributeError('%s has no property %s' % (self.__class__, key))
 
 
 class TmuxRelationalObject(object):
@@ -311,12 +322,17 @@ class TmuxRelationalObject(object):
             return None
 
     def where(self, attrs, first=False):
-        """Return objects matching child objects properties.
+        """
+        Return objects matching child objects properties.
 
-        :param attrs: tmux properties to match
-        :type attrs: dict
-        :rtype: list
+        Parameters
+        ----------
+        attrs : dict
+            tmux properties to match values of
 
+        Returns
+        -------
+        list
         """
 
         # from https://github.com/serkanyersen/underscore.py
@@ -335,17 +351,23 @@ class TmuxRelationalObject(object):
             return list(filter(by, self.children))
 
     def get_by_id(self, id):
-        """Return object based on ``child_id_attribute``.
+        """
+        Return object based on ``child_id_attribute``.
 
+        Parameters
+        ----------
+        val : str
+
+        Returns
+        -------
+        object
+
+        Notes
+        -----
         Based on `.get()`_ from `backbone.js`_.
 
         .. _backbone.js: http://backbonejs.org/
         .. _.get(): http://backbonejs.org/#Collection-get
-
-        :param id:
-        :type id: str
-        :rtype: object
-
         """
         for child in self.children:
             if child[self.child_id_attribute] == id:
@@ -356,26 +378,37 @@ class TmuxRelationalObject(object):
         return None
 
 
-def which(exe=None, default_paths=[
-            '/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'
-        ], append_env_path=True):
-    """Return path of bin. Python clone of /usr/bin/which.
-
-    from salt.util - https://www.github.com/saltstack/salt - license apache
-
-    :param exe: Application to search PATHs for.
-    :type exe: str
-    :param default_path: Application to search PATHs for.
-    :type default_path: list
-    :param append_env_path: Append PATHs in environmental variables.
-    :type append_env_path: bool
-    :rtype: str
-
+def which(
+    exe=None,
+    default_paths=['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
+    append_env_path=True,
+):
     """
+    Return path of bin. Python clone of /usr/bin/which.
+
+    Parameters
+    ----------
+    exe : str
+        Application to search PATHs for.
+    default_paths : list
+       Paths to check inside of
+    append_env_path : bool, optional
+        Append list of directories to check in from PATH environment variable.
+        Default True. Setting False only for testing / diagnosing.
+
+    Returns
+    -------
+    str
+        path of application, if found in paths.
+
+    Notes
+    -----
+    from salt.util - https://www.github.com/saltstack/salt - license apache
+    """
+
     def _is_executable_file_or_link(exe):
         # check for os.X_OK doesn't suffice because directory may executable
-        return (os.access(exe, os.X_OK) and
-                (os.path.isfile(exe) or os.path.islink(exe)))
+        return os.access(exe, os.X_OK) and (os.path.isfile(exe) or os.path.islink(exe))
 
     if _is_executable_file_or_link(exe):
         # executable in cwd or fullpath
@@ -385,8 +418,9 @@ def which(exe=None, default_paths=[
     # $PATH is changing. This also keeps order, where 'first came, first
     # win' for cases to find optional alternatives
     if append_env_path:
-        search_path = os.environ.get('PATH') and \
-            os.environ['PATH'].split(os.pathsep) or list()
+        search_path = (
+            os.environ.get('PATH') and os.environ['PATH'].split(os.pathsep) or list()
+        )
     else:
         search_path = []
 
@@ -399,13 +433,15 @@ def which(exe=None, default_paths=[
             return full_path
     logger.info(
         '\'{0}\' could not be found in the following search path: '
-        '\'{1}\''.format(exe, search_path))
+        '\'{1}\''.format(exe, search_path)
+    )
 
     return None
 
 
 def get_version():
-    """Return tmux version.
+    """
+    Return tmux version.
 
     If tmux is built from git master, the version returned will be the latest
     version appended with -master, e.g. ``2.4-master``.
@@ -413,8 +449,10 @@ def get_version():
     If using OpenBSD's base system tmux, the version will have ``-openbsd``
     appended to the latest version, e.g. ``2.4-openbsd``.
 
-    :returns: tmux version
-    :rtype: :class:`distutils.version.LooseVersion`
+    Returns
+    -------
+    :class:`distutils.version.LooseVersion`
+        tmux version according to :func:`libtmux.common.which`'s tmux
     """
     proc = tmux_cmd('-V')
     if proc.stderr:
@@ -433,73 +471,117 @@ def get_version():
     if version == 'master':
         return LooseVersion('%s-master' % TMUX_MAX_VERSION)
 
-    version = re.sub(r'[a-z]', '', version)
+    version = re.sub(r'[a-z-]', '', version)
 
     return LooseVersion(version)
 
 
 def has_version(version):
-    """Return True if tmux version installed.
+    """
+    Return affirmative if tmux version installed.
 
-    :param version: version, '1.8'
-    :type version: str
-    :returns: True if version matches
-    :rtype: bool
+    Parameters
+    ----------
+    version : str
+        version number, e.g. '1.8'
+
+    Returns
+    -------
+    bool
+        True if version matches
     """
     return get_version() == LooseVersion(version)
 
 
 def has_gt_version(min_version):
-    """Return True if tmux version greater than minimum.
+    """
+    Return affirmative if tmux version greater than minimum.
 
-    :param min_version: version, e.g. '1.8'
-    :type min_version: str
-    :returns: True if version above min_version
-    :rtype: bool
+    Parameters
+    ----------
+    min_version : str
+        tmux version, e.g. '1.8'
+
+    Returns
+    -------
+    bool
+        True if version above min_version
     """
     return get_version() > LooseVersion(min_version)
 
 
 def has_gte_version(min_version):
-    """Return True if tmux version greater or equal to minimum.
+    """
+    Return True if tmux version greater or equal to minimum.
 
-    :param min_version: version, e.g. '1.8'
-    :type min_version: str
-    :returns: True if version above or equal to min_version
-    :rtype: bool
+    Parameters
+    ----------
+    min_version : str
+        tmux version, e.g. '1.8'
+
+    Returns
+    -------
+    bool
+        True if version above or equal to min_version
     """
     return get_version() >= LooseVersion(min_version)
 
 
 def has_lte_version(max_version):
-    """Return True if tmux version less or equal to minimum.
+    """
+    Return True if tmux version less or equal to minimum.
 
-    :param max_version: version, e.g. '1.8'
-    :type max_version: str
-    :returns: True if version below or equal to max_version
-    :rtype: bool
+    Parameters
+    ----------
+    max_version : str
+        tmux version, e.g. '1.8'
+
+    Returns
+    -------
+    bool
+         True if version below or equal to max_version
     """
     return get_version() <= LooseVersion(max_version)
 
 
 def has_lt_version(max_version):
-    """Return True if tmux version less than minimum.
+    """
+    Return True if tmux version less than minimum.
 
-    :param max_version: version, e.g. '1.8'
-    :type max_version: str
-    :returns: True if version below max_version
-    :rtype: bool
+    Parameters
+    ----------
+    max_version : str
+        tmux version, e.g. '1.8'
+
+    Returns
+    -------
+    bool
+        True if version below max_version
     """
     return get_version() < LooseVersion(max_version)
 
 
 def has_minimum_version(raises=True):
-    """Return if tmux meets version requirement. Version >1.8 or above.
+    """
+    Return if tmux meets version requirement. Version >1.8 or above.
 
-    :param raises: Will raise exception if version too low, default ``True``
-    :type raises: bool
-    :returns: True if tmux meets minimum required version
-    :rtype: bool
+    Parameters
+    ----------
+    raises : bool
+        raise exception if below minimum version requirement
+
+    Returns
+    -------
+    bool
+        True if tmux meets minimum required version.
+
+    Raises
+    ------
+    libtmux.exc.VersionTooLow
+        tmux version below minimum required for libtmux
+
+    Notes
+    -----
 
     .. versionchanged:: 0.7.0
         No longer returns version, returns True or False
@@ -508,15 +590,13 @@ def has_minimum_version(raises=True):
         Versions will now remove trailing letters per `Issue 55`_.
 
         .. _Issue 55: https://github.com/tmux-python/tmuxp/issues/55.
-
     """
-
     if get_version() < LooseVersion(TMUX_MIN_VERSION):
         if raises:
             raise exc.VersionTooLow(
                 'libtmux only supports tmux %s and greater. This system'
-                ' has %s installed. Upgrade your tmux to use libtmux.' %
-                (TMUX_MIN_VERSION, get_version())
+                ' has %s installed. Upgrade your tmux to use libtmux.'
+                % (TMUX_MIN_VERSION, get_version())
             )
         else:
             return False
@@ -524,24 +604,32 @@ def has_minimum_version(raises=True):
 
 
 def session_check_name(session_name):
-    """Raises exception session name invalid, modeled after tmux function.
+    """
+    Raises exception session name invalid, modeled after tmux function.
 
     tmux(1) session names may not be empty, or include periods or colons.
     These delimiters are reserved for noting session, window and pane.
 
-    :param session_name: name of session
-    :type session_name: str
-    :returns: void
-    :raises: :exc:`exc.BadSessionName`
+    Parameters
+    ----------
+    session_name : str
+        Name of session.
+
+    Raises
+    ------
+    :exc:`exc.BadSessionName`
+        Invalid session name.
     """
     if not session_name or len(session_name) == 0:
         raise exc.BadSessionName("tmux session names may not be empty.")
     elif '.' in session_name:
         raise exc.BadSessionName(
-            "tmux session name \"%s\" may not contain periods.", session_name)
+            "tmux session name \"%s\" may not contain periods.", session_name
+        )
     elif ':' in session_name:
         raise exc.BadSessionName(
-            "tmux session name \"%s\" may not contain colons.", session_name)
+            "tmux session name \"%s\" may not contain colons.", session_name
+        )
 
 
 def handle_option_error(error):
@@ -558,10 +646,15 @@ def handle_option_error(error):
     All errors raised will have the base error of :exc:`exc.OptionError`. So to
     catch any option error, use ``except exc.OptionError``.
 
-    :param error: error response from subprocess call
-    :type error: str
-    :raises: :exc:`exc.OptionError`, :exc:`exc.UnknownOption`,
-        :exc:`exc.InvalidOption`, :exc:`exc.AmbiguousOption`
+    Parameters
+    ----------
+    error : str
+        Error response from subprocess call.
+
+    Raises
+    ------
+    :exc:`exc.OptionError`, :exc:`exc.UnknownOption`, :exc:`exc.InvalidOption`,
+    :exc:`exc.AmbiguousOption`
     """
     if 'unknown option' in error:
         raise exc.UnknownOption(error)
